@@ -15,4 +15,4 @@
 
 # Screenshot
 Client connects to the server and says "hello world"
-<img src="https://gyazo.com/97d236ef247a510db739a8ca33bb3d67">
+<img src="https://gyazo.com/97d236ef247a510db739a8ca33bb3d67.png">
