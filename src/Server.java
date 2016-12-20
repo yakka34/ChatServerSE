@@ -1,5 +1,4 @@
 
-
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -94,6 +93,12 @@ public class Server implements Runnable {
             System.out.println(room.getName() + " removed: no users");
             roomList.remove(room);
         }
+        else{
+            ChatPacket info = new ChatPacket("server", findRoom(name).getName(), 1, user.getName() + " has left room");
+            room.getUsers().forEach(roomUser ->{
+                roomUser.connection().sendMessage(info.toString());
+            });
+        }
     }
 
     /*
@@ -109,6 +114,12 @@ public class Server implements Runnable {
                     System.out.println(room.getName() + " removed: no users");
                     roomList.remove(room);
                 }
+                else{
+                    ChatPacket info = new ChatPacket("server", room.getName(), 1, user.getName() + " has left room");
+                    room.getUsers().forEach(roomUser ->{
+                    roomUser.connection().sendMessage(info.toString());
+                    });
+                }
             }
         }
     }
@@ -121,8 +132,8 @@ public class Server implements Runnable {
         try {
             while (alive) {
                 Socket client = server.accept();
-                Connection connection = new Connection(client, this);
-                connection.run();
+                new Thread(new Connection(client, this)).start();
+                //new Thread(connection.run()).start();
             }
             server.close();
         } catch (IOException e) {

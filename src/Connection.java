@@ -41,6 +41,7 @@ public class Connection implements Runnable {
         if (packet.message().startsWith("/")) {
             //Command without the "/"
             String command = packet.message().substring(1);
+            String parameters[] = command.split(" ");
             //Create new user
             if (command.equalsIgnoreCase(Server.CONNECT)) {
                 server.addUser(packet.sender(), this);
@@ -48,11 +49,15 @@ public class Connection implements Runnable {
                 System.out.println("New User " + user.getIdentity());
             } //Join existing room or create one
             else if (user != null && command.toUpperCase().contains(Server.JOIN)) {
-                String name = packet.message().substring(packet.message().indexOf('#'));
+                String name = parameters[1];
                 Room room = server.findRoom(name);
                 //Already existing room
                 if (room != null) {
                     room.addUser(user);
+                    ChatPacket info = new ChatPacket("server", room.getName(), 1, user.getName() + " joined room");
+                    room.getUsers().forEach(roomUser ->{
+                        roomUser.connection().sendMessage(info.toString());
+                    });
                 } //Create new room
                 else {
                     server.addRoom(name);
@@ -125,6 +130,7 @@ public class Connection implements Runnable {
     @Override
     public void run() {
         try {
+            System.out.println("New connection");
             String received;
             while (alive && (received = input.readLine()) != null) {
                 try {
