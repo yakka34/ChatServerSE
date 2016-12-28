@@ -15,7 +15,7 @@ Server recognizes the following commands:
 
 # To-Do
 - [x] Standardized format for ChatPacket(eg.JSON)
-- [ ] Better feedback for client requests
+- [x] More feedback for client requests
 - [ ] More server side checks
 - [ ] Allow private messages from user to user
 - [ ] Use hashmap/hashset instead of arraylist
