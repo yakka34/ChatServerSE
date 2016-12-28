@@ -3,7 +3,6 @@
 # Features
 * Threaded
 * Individual channels that can be created by the users
-* Easy to use ChatPacket for validating input, encoding and decoding messages
 
 # Usage
 Server recognizes the following commands:
