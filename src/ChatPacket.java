@@ -1,6 +1,5 @@
-
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 /**
  * @author Jukka
@@ -9,65 +8,85 @@ import java.util.regex.Pattern;
  * -Target
  * -Type
  * -Message
- * Example:
- * "yakka34","server","2","/connect"
+ * Example JSON:
+ * {
+ *  "sender":   "yakka34",              //Who send this
+ *  "target":   "server",               //server, room or user's name
+ *  "type":     "message",              //message or response
+ *  "message":  "/connect"
+ * }
  * yakka34 is the sender
  * server is the target
- * 2 is the type. All messages from the client are of the type 2
- * The server uses different types to distinguish between the types of messages
- * Type 0: Connection is closed by the server
- * Type 1: Message holds information regarding client request eg. new username, room name...
- * Type 2: Message from client to server.
- * /connect is the message and it may contain any character except new line
+ * All messages from the client are of the type "message"
+ * The server uses "response" to reply for commands
+ * /connect is the message
  */
 
 public class ChatPacket {
+
+    /*
+    Copyright 2008 Google Inc.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+    */
     
-    private final int type;
-    private final String target;
+    /*
+        Gson can transform Object into JSON String and JSON String into Object
+    */
+    public static final GsonBuilder BUILDER = new GsonBuilder();
+    public static final Gson GSON = new Gson();
+
+    private final String type;
     private final String sender;
+    private final String target;
     private final String message;
-   
-    private final Pattern pattern = Pattern.compile("\\\"(.+)\\\",\\\"(.+)\\\",\\\"(\\d+)\\\",\\\"(.+)?\\\"");
-    
-    public ChatPacket(String sender, String target, int type, String message){
-        this.sender = sender;
-        this.target = target;
-        this.type = type;
-        this.message = message;
-    }
-    
-    public ChatPacket (String encoded) throws IllegalArgumentException{
-        Matcher matcher = pattern.matcher(encoded);
-        if(matcher.matches()){
-            this.sender = matcher.group(1);
-            this.target = matcher.group(2);
-            this.type = Integer.parseInt(matcher.group(3));
-            this.message = matcher.group(4);
+
+    public ChatPacket(String sender, String target, String type, String message) throws IllegalArgumentException{
+
+        if(sender.matches("[A-Za-z0-9]+") && target.matches("^#?[A-Za-z0-9]+")){
+            this.sender = sender;
+            this.target = target;
         }
         else{
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Sender&Target: Only # in the begining, A-Z, a-z or 0-9 allowed");
         }
+        if(type.matches("[A-Za-z]+")){
+            this.type = type;
+        }
+        else{
+            throw new IllegalArgumentException("Type: Only A-Z or a-z allowed");
+        }
+        this.message = message;
     }
-    
+
     public String sender(){
         return this.sender;
     }
-    
+
     public String target(){
         return this.target;
     }
-    
-    public int type(){
+
+    public String type(){
         return this.type;
     }
-    
+
     public String message(){
         return this.message;
     }
 
     @Override
     public String toString(){
-        return "\""+sender+"\",\""+target+"\",\""+type+"\",\""+message+"\"";
+        return GSON.toJson(this);
     }
 }

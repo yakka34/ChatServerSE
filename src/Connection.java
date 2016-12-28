@@ -1,4 +1,4 @@
-
+import com.google.gson.JsonSyntaxException;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -54,7 +54,7 @@ public class Connection implements Runnable {
                 //Already existing room
                 if (room != null) {
                     room.addUser(user);
-                    ChatPacket info = new ChatPacket("server", room.getName(), 1, user.getName() + " joined room");
+                    ChatPacket info = new ChatPacket("server", room.getName(), "response", user.getName() + " joined room");
                     room.getUsers().forEach(roomUser ->{
                         roomUser.connection().sendMessage(info.toString());
                     });
@@ -66,7 +66,7 @@ public class Connection implements Runnable {
                 }
                 System.out.println(user.getIdentity() + " joined " + room.getName());
                 //Sends packet to client that has room id and name.
-                ChatPacket response = new ChatPacket("server", packet.sender(), 1, room.getName());
+                ChatPacket response = new ChatPacket("server", packet.sender(), "response", room.getName());
                 sendMessage(response.toString());
             } //Change the name of the user if the name is free
             else if (user != null && command.toUpperCase().contains(Server.NICK)) {
@@ -77,7 +77,7 @@ public class Connection implements Runnable {
                 }
                 //Sends information to the client stating it's current username.
                 //May be the same as the old one or new if the name was free.
-                ChatPacket response = new ChatPacket("server", packet.sender(), 1, user.getName());
+                ChatPacket response = new ChatPacket("server", packet.sender(), "response", user.getName());
                 sendMessage(response.toString());
             } //Leave from one channell
             else if (user != null && command.equalsIgnoreCase(Server.PART)) {
@@ -130,19 +130,27 @@ public class Connection implements Runnable {
     @Override
     public void run() {
         try {
-            System.out.println("New connection");
             String received;
+            ChatPacket response;
+            System.out.println("New connection thread");
             while (alive && (received = input.readLine()) != null) {
                 try {
-                    ChatPacket packet = new ChatPacket(received);
+                    ChatPacket packet = ChatPacket.GSON.fromJson(received, ChatPacket.class);
                     processInput(packet);
-                } /*
-                    If the received message is invalid It's mirrored back to the client
-                 */ catch (Exception e) {
-                    sendMessage("Invalid:" + received);
+                }
+                //Error messages are sent to the client
+                catch (IllegalArgumentException | JsonSyntaxException e) {
+                    String target = (user != null) ? user.getName() : "client";
+                    if(e instanceof JsonSyntaxException){
+                        response = new ChatPacket("server", target, "response", "Invalid JSON: "+received);
+                    }
+                    else{
+                        response = new ChatPacket("server", target, "response", e.getMessage());
+                    }
+                    sendMessage(response.toString());
                 }
             }
-            ChatPacket response = new ChatPacket("server", user.getName(), 0, "Connection closed by the server");
+            response = new ChatPacket("server", user.getName(), "response", "Connection closed by the server");
             sendMessage(response.toString());
             socket.close();
         } /*

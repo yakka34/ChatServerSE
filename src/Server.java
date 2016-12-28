@@ -94,7 +94,7 @@ public class Server implements Runnable {
             roomList.remove(room);
         }
         else{
-            ChatPacket info = new ChatPacket("server", findRoom(name).getName(), 1, user.getName() + " has left room");
+            ChatPacket info = new ChatPacket("server", findRoom(name).getName(), "response", user.getName() + " has left room");
             room.getUsers().forEach(roomUser ->{
                 roomUser.connection().sendMessage(info.toString());
             });
@@ -115,7 +115,7 @@ public class Server implements Runnable {
                     roomList.remove(room);
                 }
                 else{
-                    ChatPacket info = new ChatPacket("server", room.getName(), 1, user.getName() + " has left room");
+                    ChatPacket info = new ChatPacket("server", room.getName(), "response", user.getName() + " has left room");
                     room.getUsers().forEach(roomUser ->{
                     roomUser.connection().sendMessage(info.toString());
                     });
