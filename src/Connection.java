@@ -12,7 +12,7 @@ import java.net.Socket;
  */
 public class Connection implements Runnable {
 
-    //Is null until client sends /connect request
+    //User is null until client sends /connect request
     private User user;
     private Socket socket;
     //The reference to the server object to which this connection is attached
@@ -36,7 +36,7 @@ public class Connection implements Runnable {
     /*
         Handles valid packets received from the client
      */
-    public void processInput(ChatPacket packet) {
+    public void processInput(ChatPacket packet) throws IllegalArgumentException{
         //If the message contains a '/' it is a command
         if (packet.message().startsWith("/")) {
             //Command without the "/"
@@ -44,21 +44,29 @@ public class Connection implements Runnable {
             String parameters[] = command.split(" ");
             //Create new user
             if (command.equalsIgnoreCase(Server.CONNECT)) {
-                server.addUser(packet.sender(), this);
-                user = server.findUser(packet.sender());
-                System.out.println("New User " + user.getIdentity());
-            } //Join existing room or create one
+                this.user = server.addUser(packet.sender(), this);
+                if(user != null){
+                    System.out.println("New User " + user.getIdentity());
+                    sendResponse(user.getName());
+                    //sendMessage(new ChatPacket("server", packet.sender(), "response", user.getName()).toString());
+                }
+                else{
+                    throw new IllegalArgumentException("Error: name already in use");
+                }
+            }
+            //Join existing room or create one
             else if (user != null && command.toUpperCase().contains(Server.JOIN)) {
                 String name = parameters[1];
                 Room room = server.findRoom(name);
                 //Already existing room
                 if (room != null) {
                     room.addUser(user);
-                    ChatPacket info = new ChatPacket("server", room.getName(), "response", user.getName() + " joined room");
+                    ChatPacket info = new ChatPacket("server", room.getName(), "message", user.getName() + " joined room");
                     room.getUsers().forEach(roomUser ->{
                         roomUser.connection().sendMessage(info.toString());
                     });
-                } //Create new room
+                }
+                //Create new room
                 else {
                     server.addRoom(name);
                     room = server.findRoom(name);
@@ -66,28 +74,33 @@ public class Connection implements Runnable {
                 }
                 System.out.println(user.getIdentity() + " joined " + room.getName());
                 //Sends packet to client that has room id and name.
-                ChatPacket response = new ChatPacket("server", packet.sender(), "response", room.getName());
-                sendMessage(response.toString());
-            } //Change the name of the user if the name is free
+                sendResponse(room.getName());
+            } 
+            //Change the name of the user if the name is free
             else if (user != null && command.toUpperCase().contains(Server.NICK)) {
-                String name = packet.message().substring(packet.message().indexOf(' ') + 1);
-                if (server.findUser(name) == null) {
-                    user.setName(name);
+                if (server.findUser(parameters[1]) == null) {
+                    user.setName(parameters[1]);
                     System.out.println(packet.sender() + " is now known as " + user.getName());
                 }
-                //Sends information to the client stating it's current username.
-                //May be the same as the old one or new if the name was free.
-                ChatPacket response = new ChatPacket("server", packet.sender(), "response", user.getName());
-                sendMessage(response.toString());
-            } //Leave from one channell
+                else{
+                    throw new IllegalArgumentException("Error: name already in use");
+                }
+                //Send new username to the client
+                sendResponse(user.getName());
+            }
+            //Leave from one channel
             else if (user != null && command.equalsIgnoreCase(Server.PART)) {
                 System.out.println(user.getName() + " has left room " + server.findRoom(packet.target()).getName());
                 server.removeUserFromRoom(user, packet.target());
-            } //Leave from all channells but don't disconnect
+                sendResponse("part");
+            }
+            //Leave from all channels but don't disconnect
             else if (user != null && command.equalsIgnoreCase(Server.PARTALL)) {
                 server.removeUserFromRooms(user);
                 System.out.println(user.getName() + " has left from all rooms");
-            } //Disconnect
+                sendResponse("partall");
+            }
+            //Disconnect
             else if (command.equalsIgnoreCase(Server.QUIT)) {
                 if (user != null && user.getRoomList().size() > 0) {
                     server.removeUserFromRooms(user);
@@ -96,12 +109,14 @@ public class Connection implements Runnable {
                 System.out.println(((user != null) ? user.getIdentity() : InetAddress()) + " has disconnected");
                 this.alive = false;
                 server.removeUser(user);
-            } //Invalid command
+            }
+            //Invalid command
             else {
                 System.out.println("Invalid command: " + packet.toString());
-                sendMessage("Invalid:" + packet.toString());
+                throw new IllegalArgumentException("Error: Invalid command");
             }
-        } //Message to room
+        }
+        //Message to room
         else {
             Room room = server.findRoom(packet.target());
             if (user != null && room != null) {
@@ -110,14 +125,17 @@ public class Connection implements Runnable {
                     roomUser.connection().sendMessage(packet.toString());
                 });
             } else {
-                System.out.println("Invalid command: " + packet.toString());
-                sendMessage("Invalid:" + packet.toString());
+                throw new IllegalArgumentException("Error: Invalid target");
             }
         }
     }
 
     public InetAddress InetAddress() {
         return socket.getInetAddress();
+    }
+    
+    public void sendResponse(String msg){
+        sendMessage(new ChatPacket("server","client","response",msg).toString());
     }
 
     public void sendMessage(String msg) {
@@ -131,27 +149,26 @@ public class Connection implements Runnable {
     public void run() {
         try {
             String received;
-            ChatPacket response;
             System.out.println("New connection thread");
             while (alive && (received = input.readLine()) != null) {
                 try {
                     ChatPacket packet = ChatPacket.GSON.fromJson(received, ChatPacket.class);
+                    if(user != null && !user.getName().equals(packet.sender())){
+                        throw new IllegalArgumentException("Error: sender should be "+user.getName());
+                    }
                     processInput(packet);
                 }
                 //Error messages are sent to the client
                 catch (IllegalArgumentException | JsonSyntaxException e) {
-                    String target = (user != null) ? user.getName() : "client";
                     if(e instanceof JsonSyntaxException){
-                        response = new ChatPacket("server", target, "response", "Invalid JSON: "+received);
+                        sendResponse("Error: Invalid JSON "+received);
                     }
                     else{
-                        response = new ChatPacket("server", target, "response", e.getMessage());
+                        sendResponse(e.getMessage());
                     }
-                    sendMessage(response.toString());
                 }
             }
-            response = new ChatPacket("server", user.getName(), "response", "Connection closed by the server");
-            sendMessage(response.toString());
+            sendResponse("Connection closed by the server");
             socket.close();
         } /*
             In case of an networking error connection is terminated by the server.

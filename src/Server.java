@@ -39,10 +39,16 @@ public class Server implements Runnable {
     }
 
     /*
-        Create new user and add it to server user list
+        Checks if the name is available and adds new user to global userlist
+        returns null if the name was not free
      */
-    public void addUser(String name, Connection connenction) {
-        this.userList.add(new User(name, connenction));
+    public User addUser(String name, Connection connenction) {
+        if(name.equalsIgnoreCase("server") || findUser(name) != null){
+            return null;
+        }
+        User user = new User(name, connenction);
+        this.userList.add(user);
+        return user;
     }
 
     /*

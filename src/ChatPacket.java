@@ -58,13 +58,13 @@ public class ChatPacket {
             this.target = target;
         }
         else{
-            throw new IllegalArgumentException("Sender&Target: Only # in the begining, A-Z, a-z or 0-9 allowed");
+            throw new IllegalArgumentException("Error: Only # in the begining, A-Z, a-z or 0-9 allowed in sender and target");
         }
         if(type.matches("[A-Za-z]+")){
             this.type = type;
         }
         else{
-            throw new IllegalArgumentException("Type: Only A-Z or a-z allowed");
+            throw new IllegalArgumentException("Error: Only A-Z or a-z allowed in type");
         }
         this.message = message;
     }
