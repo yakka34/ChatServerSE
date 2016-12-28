@@ -15,7 +15,7 @@ Server recognizes the following commands:
 * /quit     //no parameter
 
 # To-Do
-- [ x ] Standardized format for ChatPacket(eg.JSON)
+- [x] Standardized format for ChatPacket(eg.JSON)
 - [ ] Better feedback for client requests
 - [ ] More server side checks
 - [ ] Allow private messages from user to user
